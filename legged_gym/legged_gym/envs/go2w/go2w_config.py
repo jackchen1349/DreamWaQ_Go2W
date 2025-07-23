@@ -57,15 +57,15 @@ class GO2WRoughCfg( LeggedRobotCfg ):
             'FR_hip_joint': 0.0 ,  # [rad]
             'RR_hip_joint': 0.0,   # [rad]
 
-            'FL_thigh_joint': 0.67,     # [rad]
-            'RL_thigh_joint': 0.67,   # [rad]
-            'FR_thigh_joint': 0.67,     # [rad]
-            'RR_thigh_joint': 0.67,   # [rad]
+            'FL_thigh_joint': 0.8,     # [rad]
+            'RL_thigh_joint': 0.8,   # [rad]
+            'FR_thigh_joint': 0.8,     # [rad]
+            'RR_thigh_joint': 0.8,   # [rad]
 
-            'FL_calf_joint': -1.3,   # [rad]
-            'RL_calf_joint': -1.3,    # [rad]
-            'FR_calf_joint': -1.3,  # [rad]
-            'RR_calf_joint': -1.3,    # [rad]
+            'FL_calf_joint': -1.5,   # [rad]
+            'RL_calf_joint': -1.5,    # [rad]
+            'FR_calf_joint': -1.5,  # [rad]
+            'RR_calf_joint': -1.5,    # [rad]
             
             'FL_foot_joint':0.0,
             'RL_foot_joint':0.0,
@@ -79,15 +79,15 @@ class GO2WRoughCfg( LeggedRobotCfg ):
             'FR_hip_joint': 0.0 ,  # [rad]
             'RR_hip_joint': 0.0,   # [rad]
 
-            'FL_thigh_joint': 0.67,     # [rad] 大腿
-            'RL_thigh_joint': 0.67,   # [rad]
-            'FR_thigh_joint': 0.67,     # [rad]
-            'RR_thigh_joint': 0.67,   # [rad]
+            'FL_thigh_joint': 0.8,     # [rad] 大腿
+            'RL_thigh_joint': 0.8,   # [rad]
+            'FR_thigh_joint': 0.8,     # [rad]
+            'RR_thigh_joint': 0.8,   # [rad]
 
-            'FL_calf_joint': -1.3,   # [rad] 小腿
-            'RL_calf_joint': -1.3,    # [rad]
-            'FR_calf_joint': -1.3,  # [rad]
-            'RR_calf_joint': -1.3,    # [rad] 
+            'FL_calf_joint': -1.5,   # [rad] 小腿
+            'RL_calf_joint': -1.5,    # [rad]
+            'FR_calf_joint': -1.5,  # [rad]
+            'RR_calf_joint': -1.5,    # [rad] 
 
             'FL_foot_joint':0.0, # 轮足
             'RL_foot_joint':0.0,

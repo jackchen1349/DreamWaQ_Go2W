@@ -49,7 +49,7 @@ class GO2WRoughCfg( LeggedRobotCfg ):
 
     # 机器人初始状态
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.5] # x,y,z [m] 初始位置 四元数表示
+        pos = [0.0, 0.0, 0.4] # x,y,z [m] 初始位置 四元数表示
         # 初始关节位置
         default_joint_angles = { # = target angles [rad] when action = 0.0
             'FL_hip_joint': 0.0,   # [rad]
@@ -100,7 +100,7 @@ class GO2WRoughCfg( LeggedRobotCfg ):
         # PD Drive parameters:
         control_type = 'P' # 位置控制、速度控制、扭矩控制
         
-        stiffness = {'hip_joint': 50.,'thigh_joint': 50.,'calf_joint': 50.,"foot_joint":0}  # [N*m/rad] 刚度系数k_p 
+        stiffness = {'hip_joint': 40.,'thigh_joint': 40.,'calf_joint': 40.,"foot_joint":0}  # [N*m/rad] 刚度系数k_p 
         damping = {'hip_joint': 1,'thigh_joint': 1,'calf_joint': 1,"foot_joint":0.5}     # [N*m*s/rad] 阻尼系数k_d
         # action scale: target angle = actionScale * action + defaultAngle
         # 乘一个缩放因子，目的是让动作值适应不同关节的运动范围
@@ -127,10 +127,10 @@ class GO2WRoughCfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.4 # tracking reward = exp(-error^2/sigma)
-        soft_dof_pos_limit = 0.9 # percentage of urdf limits, values above this limit are penalized
-        soft_dof_vel_limit = 0.9
+        soft_dof_pos_limit = 1. # percentage of urdf limits, values above this limit are penalized
+        soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
-        base_height_target = 0.34
+        base_height_target = 0.4
         max_contact_force = 100. # forces above this value are penalized
        
         class scales( LeggedRobotCfg.rewards.scales ):
@@ -140,27 +140,26 @@ class GO2WRoughCfg( LeggedRobotCfg ):
             lin_vel_z = -0.1
             ang_vel_xy = -0.05
             orientation = -2
-            torques = -0.0002
+            torques = -0.0001
             dof_vel = -1e-7
             dof_acc = -1e-7
             base_height = -0.5
-            feet_air_time =  0
-            collision = -0.1
-            feet_stumble = -0.1
+            # feet_air_time =  0
+            # collision = -0.1
+            # feet_stumble = -0.1
             action_rate = -0.0002
             stand_still = -0.01
-            dof_pos_limits = -0.9
-            arm_pos = -0.  
+            # dof_pos_limits = -0.9
             hip_action_l2 = -0.1
 
 class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.003
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'blind_50_1_40_0.5_trmeish'
+        run_name = ''
         experiment_name = 'rough_go2w'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 30000
-        load_run = "/home/hu/csq/DreamWaQ/legged_gym/logs/rough_go2w/May20_22-55-02_blind_50_1_40_0.5_trmeish"
+        max_iterations = 10000
+        load_run = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Aug22_15-05-06_"
         checkpoint = -1
   

@@ -30,7 +30,7 @@
 
 import os
 import sys  
-sys.path.append("/home/hu/csq/DreamWaQ/legged_gym")
+sys.path.append("/home/csq/DreamWaQ/legged_gym")
 import matplotlib
 import isaacgym
 from legged_gym import LEGGED_GYM_ROOT_DIR
@@ -89,8 +89,8 @@ def play(args):
     for i in range(10*int(env.max_episode_length)):
         actions = policy(obs.detach(),obs_hist.detach())
         obs, _, _, obs_hist, rews, dones, infos = env.step(actions.detach())
-        obs[:,6] = 0.0
-        obs[:,7] = 2.0
+        obs[:,6] = 0.6
+        obs[:,7] = 0.0
         obs[:,8] = 0.0
 
         if RECORD_FRAMES:

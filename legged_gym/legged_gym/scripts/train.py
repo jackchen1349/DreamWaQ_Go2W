@@ -32,7 +32,7 @@ import numpy as np
 import os
 from datetime import datetime
 import sys
-sys.path.append("/home/hu/csq/DreamWaQ/legged_gym")
+sys.path.append("/home/csq/DreamWaQ/legged_gym")
 import isaacgym
 from legged_gym.envs import *
 from legged_gym.utils import get_args, task_registry

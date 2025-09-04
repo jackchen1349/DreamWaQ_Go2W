@@ -18,19 +18,19 @@ class GO2WRoughCfg( LeggedRobotCfg ):
         heading_command = False # if true: compute ang vel command from heading error
         class ranges:
             lin_vel_x = [-1.0, 1.0] # min max [m/s] x轴方向线速度
-            lin_vel_y = [-1.0, 1.0]   # min max [m/s] y轴方向线速度
-            ang_vel_yaw = [-1, 1]    # min max [r ad/s] 角速度
+            lin_vel_y = [-0.6, 0.6]   # min max [m/s] y轴方向线速度
+            ang_vel_yaw = [-1, 1.0]    # min max [r ad/s] 角速度
             heading = [-3.14, 3.14] # 航向 实际上没有使用这个维度
 
     class terrain(LeggedRobotCfg.terrain):
-        mesh_type = 'plane' # "heightfield" # none, plane, heightfield or trimesh
+        mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
         horizontal_scale = 0.1 # [m]
         vertical_scale = 0.005 # [m]
         border_size = 25 # [m]
         curriculum = True  
         static_friction = 1.0
         dynamic_friction = 1.0
-        restitution = 0.5
+        restitution = 0.0
         # rough terrain only:
         measure_heights = True
         measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
@@ -43,7 +43,7 @@ class GO2WRoughCfg( LeggedRobotCfg ):
         num_rows= 10 # number of terrain rows (levels)
         num_cols = 20 # number of terrain cols (types)
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
-        terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2]
+        terrain_proportions = [0.2, 0.1, 0.25, 0.25, 0.2]
         # trimesh only:
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
 
@@ -126,7 +126,7 @@ class GO2WRoughCfg( LeggedRobotCfg ):
     # 奖励函数
     class rewards( LeggedRobotCfg.rewards ):
         only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
-        tracking_sigma = 0.4 # tracking reward = exp(-error^2/sigma)
+        tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
         soft_dof_pos_limit = 1. # percentage of urdf limits, values above this limit are penalized
         soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
@@ -134,32 +134,35 @@ class GO2WRoughCfg( LeggedRobotCfg ):
         max_contact_force = 100. # forces above this value are penalized
        
         class scales( LeggedRobotCfg.rewards.scales ):
-            termination = -0.8
-            tracking_lin_vel = 3.0
-            tracking_ang_vel = 1.5
-            lin_vel_z = -0.1
-            ang_vel_xy = -0.05
-            orientation = -2
-            torques = -0.0001
+            termination = -0.8 # 25/8/23 zsy说不用加
+            tracking_lin_vel = 1.5 # 惩罚当前机器人在X、Y方向速度与命令不一致
+            tracking_ang_vel = 0.75 # 惩罚当前机器人在角度转向速度与命令不一致
+            lin_vel_z = -1 # 惩罚机器人在Z轴上的速度 对应现象为机器人上下起伏很大
+            ang_vel_xy = -0.05 # 惩罚机器人在X轴和Y轴上的角速度 对应现象为遏制机器人左右晃动和前后晃动
+            orientation = -0.5 # 强烈鼓励机器人与初始姿态的基座方向一致
+            torques = -0.0003 # 机器人运控各电机输出的力矩的平方和 让模型找到最省力矩的方案
             dof_vel = -1e-7
             dof_acc = -1e-7
-            base_height = -0.5
-            # feet_air_time =  0
-            # collision = -0.1
-            # feet_stumble = -0.1
-            action_rate = -0.0002
-            stand_still = -0.01
-            # dof_pos_limits = -0.9
-            hip_action_l2 = -0.1
+            base_height = -10 # 惩罚基座高度不保持在期望的高度上
+            feet_air_time =  0
+            collision = -1
+            feet_stumble = -0.1
+            action_rate = -0.01
+            stand_still = -0.5
+            dof_pos_limits = -0
+            hip_action_l2 = -0
+            hip_default = -0.5 # 惩罚髋关节不在默认位置
 
 class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
-        entropy_coef = 0.003
+        entropy_coef = 0.01
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
         experiment_name = 'rough_go2w'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 10000
-        load_run = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Aug22_15-05-06_"
+        max_iterations = 30000
+        load_run = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Sep02_15-30-24_"
         checkpoint = -1
+        resume = False
+        resume_path = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Aug23_13-57-15_/model_10000.pt"
   

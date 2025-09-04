@@ -33,7 +33,7 @@ import numpy as np
 
 from rsl_rl.utils import split_and_pad_trajectories
 
-class RolloutStorage:
+class RolloutStorage:  
     class Transition:
         def __init__(self):
             self.observations = None
@@ -171,6 +171,7 @@ class RolloutStorage:
         advantages = self.advantages.flatten(0, 1)
         old_mu = self.mu.flatten(0, 1)
         old_sigma = self.sigma.flatten(0, 1)
+        dones = self.dones.flatten(0, 1)
 
         for epoch in range(num_epochs):
             for i in range(num_mini_batches):
@@ -190,8 +191,9 @@ class RolloutStorage:
                 advantages_batch = advantages[batch_idx]
                 old_mu_batch = old_mu[batch_idx]
                 old_sigma_batch = old_sigma[batch_idx]
-                yield obs_batch, critic_observations_batch,prev_critic_obs_batch,obs_hist_batch, actions_batch, target_values_batch, advantages_batch, returns_batch, \
-                       old_actions_log_prob_batch, old_mu_batch, old_sigma_batch, (None, None), None
+                dones_batch = dones[batch_idx]
+                yield obs_batch, critic_observations_batch, prev_critic_obs_batch, obs_hist_batch, actions_batch, target_values_batch, advantages_batch, returns_batch, \
+                       old_actions_log_prob_batch, old_mu_batch, old_sigma_batch, (None, None), None, dones_batch
 
     # for RNNs only
     def reccurent_mini_batch_generator(self, num_mini_batches, num_epochs=8):

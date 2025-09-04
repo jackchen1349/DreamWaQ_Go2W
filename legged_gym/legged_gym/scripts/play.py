@@ -56,7 +56,7 @@ def play(args):
     env_cfg.env.num_envs = min(env_cfg.env.num_envs, 50)
     env_cfg.terrain.num_rows = 5
     env_cfg.terrain.num_cols = 5
-    env_cfg.terrain.curriculum = False
+    env_cfg.terrain.curriculum = False   
     env_cfg.noise.add_noise = False
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.push_robots = False
@@ -89,7 +89,7 @@ def play(args):
     for i in range(10*int(env.max_episode_length)):
         actions = policy(obs.detach(),obs_hist.detach())
         obs, _, _, obs_hist, rews, dones, infos = env.step(actions.detach())
-        obs[:,6] = 0.6
+        obs[:,6] = 2.0
         obs[:,7] = 0.0
         obs[:,8] = 0.0
 

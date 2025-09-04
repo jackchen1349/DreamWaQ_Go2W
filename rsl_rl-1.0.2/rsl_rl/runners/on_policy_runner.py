@@ -59,13 +59,14 @@ class OnPolicyRunner:
         else:
             num_critic_obs = self.env.num_obs
         cenet_in_dim = self.env.num_obs_hist * self.env.num_obs
-        cenet_out_dim = 19
+        num_latent = 16 # 隐变量数量 csq 25/9/4
+        num_hist = 5 # 历史obs区间大小 csq 25/9/4 
         actor_critic_class = eval(self.cfg["policy_class_name"]) # ActorCritic
-        actor_critic: ActorCritic_DWAQ = actor_critic_class( self.env.num_obs+cenet_out_dim,
+        actor_critic: ActorCritic_DWAQ = actor_critic_class(self.env.num_obs + num_latent + 3,
                                                         num_critic_obs,
                                                         self.env.num_actions,
-                                                        cenet_in_dim,
-                                                        cenet_out_dim,
+                                                        num_hist,
+                                                        num_latent,
                                                         **self.policy_cfg).to(self.device)
         alg_class = eval(self.cfg["algorithm_class_name"]) # PPO
         self.alg: PPO = alg_class(actor_critic, device=self.device, **self.alg_cfg)
@@ -89,6 +90,7 @@ class OnPolicyRunner:
         # initialize writer
         if self.log_dir is not None and self.writer is None:
             self.writer = SummaryWriter(log_dir=self.log_dir, flush_secs=10)
+            
         if init_at_random_ep_len:
             self.env.episode_length_buf = torch.randint_like(self.env.episode_length_buf, high=int(self.env.max_episode_length))
         obs,obs_hist = self.env.get_observations()
@@ -111,14 +113,10 @@ class OnPolicyRunner:
                 for i in range(self.num_steps_per_env):
                     
                     actions = self.alg.act(obs, critic_obs,prev_critic_obs,obs_hist)
-                    #prev_critic_obs = critic_obs
-                    # print("######prev_critic_obs =====",prev_critic_obs)
                     obs, privileged_obs, prev_privileged_obs, obs_hist, rewards, dones, infos = self.env.step(actions)
                     critic_obs = privileged_obs if privileged_obs is not None else obs
                     prev_critic_obs = prev_privileged_obs
                     obs, critic_obs, prev_critic_obs, obs_hist, rewards, dones = obs.to(self.device), critic_obs.to(self.device), prev_critic_obs.to(self.device), obs_hist.to(self.device), rewards.to(self.device), dones.to(self.device)
-                    # print("######prev_critic_obs =====",prev_critic_obs[0,0],'\n',"#####critic_obs =====",critic_obs[0,0])
-                    # print("######obs_hist =====",obs_hist[180,0],'\n',"#####obs =====",obs[0,0])
                     self.alg.process_env_step(rewards, dones, infos)
                     
                     if self.log_dir is not None:
@@ -140,9 +138,12 @@ class OnPolicyRunner:
                 start = stop
                 self.alg.compute_returns(critic_obs)
             
-            mean_value_loss, mean_surrogate_loss, mean_autoenc_loss = self.alg.update()
+            mean_value_loss, mean_surrogate_loss, mean_autoenc_loss,\
+                  mean_entropy_loss, mean_kld_loss, mean_vel_loss, mean_recons_loss = self.alg.update()
+            
             stop = time.time()
             learn_time = stop - start
+
             if self.log_dir is not None:
                 self.log(locals())
             if it % self.save_interval == 0:
@@ -150,6 +151,7 @@ class OnPolicyRunner:
             ep_infos.clear()
         
         self.current_learning_iteration += num_learning_iterations
+
         self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(self.current_learning_iteration)))
 
     def log(self, locs, width=80, pad=35):
@@ -175,8 +177,12 @@ class OnPolicyRunner:
         fps = int(self.num_steps_per_env * self.env.num_envs / (locs['collection_time'] + locs['learn_time']))
 
         self.writer.add_scalar('Loss/value_function', locs['mean_value_loss'], locs['it'])
+        self.writer.add_scalar('Loss/Reconstruction', locs['mean_recons_loss'], locs['it'])
+        self.writer.add_scalar('Loss/Vel_estimation', locs['mean_vel_loss'], locs['it'])
+        self.writer.add_scalar('Loss/KL_div', locs['mean_kld_loss'], locs['it'])
         self.writer.add_scalar('Loss/surrogate', locs['mean_surrogate_loss'], locs['it'])
         self.writer.add_scalar('Loss/autoenc_function', locs['mean_autoenc_loss'], locs['it'])
+        self.writer.add_scalar('Loss/entropy', locs['mean_entropy_loss'], locs['it'])
         self.writer.add_scalar('Loss/learning_rate', self.alg.learning_rate, locs['it'])
         self.writer.add_scalar('Policy/mean_noise_std', mean_std.item(), locs['it'])
         self.writer.add_scalar('Perf/total_fps', fps, locs['it'])
@@ -197,7 +203,11 @@ class OnPolicyRunner:
                             'collection_time']:.3f}s, learning {locs['learn_time']:.3f}s)\n"""
                           f"""{'Value function loss:':>{pad}} {locs['mean_value_loss']:.4f}\n"""
                           f"""{'Surrogate loss:':>{pad}} {locs['mean_surrogate_loss']:.4f}\n"""
+                          f"""{'Policy entropy:':>{pad}} {locs['mean_entropy_loss']:.4f}\n"""
                           f"""{'Autoenc function loss:':>{pad}} {locs['mean_autoenc_loss']:.4f}\n"""
+                          f"""{'Recons loss:':>{pad}} {locs['mean_recons_loss']:.4f}\n"""
+                          f"""{'Vel Est loss:':>{pad}} {locs['mean_vel_loss']:.4f}\n"""
+                          f"""{'KL loss:':>{pad}} {locs['mean_kld_loss']:.4f}\n"""
                           f"""{'Mean action noise std:':>{pad}} {mean_std.item():.2f}\n"""
                           f"""{'Mean reward:':>{pad}} {statistics.mean(locs['rewbuffer']):.2f}\n"""
                           f"""{'Mean episode length:':>{pad}} {statistics.mean(locs['lenbuffer']):.2f}\n""")
@@ -210,7 +220,11 @@ class OnPolicyRunner:
                             'collection_time']:.3f}s, learning {locs['learn_time']:.3f}s)\n"""
                           f"""{'Value function loss:':>{pad}} {locs['mean_value_loss']:.4f}\n"""
                           f"""{'Surrogate loss:':>{pad}} {locs['mean_surrogate_loss']:.4f}\n"""
+                          f"""{'Policy entropy:':>{pad}} {locs['mean_entropy_loss']:.4f}\n"""
                           f"""{'Autoenc function loss:':>{pad}} {locs['mean_autoenc_loss']:.4f}\n"""
+                          f"""{'Recons loss:':>{pad}} {locs['mean_recons_loss']:.4f}\n"""
+                          f"""{'Vel Est loss:':>{pad}} {locs['mean_vel_loss']:.4f}\n"""
+                          f"""{'KL loss:':>{pad}} {locs['mean_kld_loss']:.4f}\n"""
                           f"""{'Mean action noise std:':>{pad}} {mean_std.item():.2f}\n""")
                         #   f"""{'Mean reward/step:':>{pad}} {locs['mean_reward']:.2f}\n"""
                         #   f"""{'Mean episode length/episode:':>{pad}} {locs['mean_trajectory_length']:.2f}\n""")

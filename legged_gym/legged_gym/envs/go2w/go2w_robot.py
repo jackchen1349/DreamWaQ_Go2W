@@ -54,7 +54,8 @@ class Go2w(LeggedRobot):
         if self.privileged_obs_buf is not None:
             self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
         # 裁剪观测值
-        return self.obs_buf, self.privileged_obs_buf, self.prev_privileged_obs_buf, self.obs_hist_buf,self.rew_buf, self.reset_buf, self.extras ## do we need to return obs history buffer??
+        
+        return self.obs_buf, self.privileged_obs_buf, self.prev_privileged_obs_buf, self.obs_hist_buf, self.rew_buf, self.reset_buf, self.extras ## do we need to return obs history buffer??
 
         # 裁剪后的观测值，额外的观测信息，奖励缓冲区，重置缓冲区，额外信息 
 
@@ -402,7 +403,7 @@ class Go2w(LeggedRobot):
 
         Returns:
             [torch.Tensor]: Torques sent to the simulation
-        """  
+        """    
         # 输出力矩用
         # self.log_dir = "./logs"  # 日志文件夹路径
         # if not os.path.exists(self.log_dir):  
@@ -997,7 +998,13 @@ class Go2w(LeggedRobot):
         
         orientation_error = torch.sum(torch.square(self.root_states[:,:7] - self.base_init_state[0:7]),dim=1)
         return torch.exp(-orientation_error/self.cfg.rewards.tracking_sigma)
+    
     def _reward_hip_action_l2(self):
         action_l2 = torch.sum(self.actions[:, [0, 4, 8, 12]] ** 2, dim=1)
         #self.episode_metric_sums['leg_action_l2'] += action_l2
         return action_l2
+    
+    def _reward_hip_default(self):
+        hip_err = torch.sum((self.dof_pos[:, [0, 4, 8, 12]] - self.default_dof_pos[:, [0, 4, 8, 12]]) ** 2, dim = 1)
+        # print("penalty",penalty.shape)
+        return hip_err

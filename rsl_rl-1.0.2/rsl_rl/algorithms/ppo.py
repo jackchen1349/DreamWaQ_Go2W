@@ -39,7 +39,7 @@ from rsl_rl.storage import RolloutStorage
 class PPO:
     actor_critic: ActorCritic_DWAQ
     def __init__(self,
-                 actor_critic,
+                 actor_critic,  
                  num_learning_epochs=1,
                  num_mini_batches=1,
                  clip_param=0.2,
@@ -48,11 +48,13 @@ class PPO:
                  value_loss_coef=1.0,
                  entropy_coef=0.0,
                  learning_rate=1e-3,
+                 vae_learning_rate = 1e-3,
                  max_grad_norm=1.0,
                  use_clipped_value_loss=True,
                  schedule="fixed",
                  desired_kl=0.01,
                  device='cpu',
+                 kl_weight = 1.0
                  ):
 
         self.device = device
@@ -61,11 +63,16 @@ class PPO:
         self.schedule = schedule
         self.learning_rate = learning_rate
 
+        # VAE components
+        self.vae_learning_rate = vae_learning_rate
+        self.kl_weight = kl_weight
+
         # PPO components
         self.actor_critic = actor_critic
         self.actor_critic.to(self.device)
         self.storage = None # initialized later
-        self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=learning_rate)
+        self.vae_optimizer = optim.Adam(self.actor_critic.vae.parameters(), lr = self.vae_learning_rate) # 用于VAE优化 Add by CSQ 25/9/3
+        self.optimizer = optim.Adam(self.actor_critic.parameters(), lr = learning_rate) # 用于整个策略优化
         self.transition = RolloutStorage.Transition()
 
         # PPO parameters
@@ -120,17 +127,21 @@ class PPO:
         last_values= self.actor_critic.evaluate(last_critic_obs).detach()
         self.storage.compute_returns(last_values, self.gamma, self.lam)
 
-    def update(self,beta=1):
+    def update(self):
         mean_value_loss = 0
         mean_surrogate_loss = 0
+        mean_entropy_loss = 0
+
         mean_autoenc_loss = 0
+        mean_recons_loss = 0
+        mean_vel_loss = 0
+        mean_kld_loss = 0 # 记录便于打印调试 csq 25/9/4
         # if self.actor_critic.is_recurrent:
         #     generator = self.storage.reccurent_mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
         # else:
         generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
         for obs_batch, critic_obs_batch, prev_critic_obs_batch, obs_hist_batch, actions_batch, target_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch, \
-            old_mu_batch, old_sigma_batch, hid_states_batch, masks_batch in generator:
-
+            old_mu_batch, old_sigma_batch, hid_states_batch, masks_batch, dones_batch in generator:
 
                 self.actor_critic.act(obs_batch, obs_hist_batch, masks=masks_batch, hidden_states=hid_states_batch[0])
                 actions_log_prob_batch = self.actor_critic.get_actions_log_prob(actions_batch)
@@ -143,7 +154,9 @@ class PPO:
                 if self.desired_kl != None and self.schedule == 'adaptive':
                     with torch.inference_mode():
                         kl = torch.sum(
-                            torch.log(sigma_batch / old_sigma_batch + 1.e-5) + (torch.square(old_sigma_batch) + torch.square(old_mu_batch - mu_batch)) / (2.0 * torch.square(sigma_batch)) - 0.5, axis=-1)
+                            torch.log(sigma_batch / old_sigma_batch + 1.e-5) + (
+                                torch.square(old_sigma_batch) + torch.square(old_mu_batch - mu_batch)) / (
+                                2.0 * torch.square(sigma_batch)) - 0.5, axis=-1)
                         kl_mean = torch.mean(kl)
 
                         if kl_mean > self.desired_kl * 2.0:
@@ -155,18 +168,18 @@ class PPO:
                             param_group['lr'] = self.learning_rate
 
 
-                #Beta VAE loss
-                code,code_vel,decode,mean_vel,logvar_vel,mean_latent,logvar_latent = self.actor_critic.cenet_forward(obs_hist_batch)
+                # #Beta VAE loss
+                # code,code_vel,decode,mean_vel,logvar_vel,mean_latent,logvar_latent = self.actor_critic.cenet_forward(obs_hist_batch)
                 
-                vel_target = prev_critic_obs_batch[:,73:76]
-                decode_target = obs_batch
-                vel_target.requires_grad = False
-                decode_target.requires_grad = False
-                autoenc_loss = (nn.MSELoss()(code_vel,vel_target) + nn.MSELoss()(decode,decode_target) + beta*(-0.5 * torch.sum(1 + logvar_latent - mean_latent.pow(2) - logvar_latent.exp())))/self.num_mini_batches
-                # estimation_loss = (code[:,0:3] - prev_critic_obs_batch[:,45:48]).pow(2).mean()
-                # reconst_loss = (decode - obs_batch).pow(2).mean()
-                # latent_loss = beta*(-0.5 * torch.sum(1 + logvar - mean.pow(2) - logvar.exp()))/mean.shape[0]
-                # autoenc_loss = estimation_loss + reconst_loss + latent_loss
+                # vel_target = prev_critic_obs_batch[:,73:76]
+                # decode_target = obs_batch
+                # vel_target.requires_grad = False
+                # decode_target.requires_grad = False
+                # autoenc_loss = (nn.MSELoss()(code_vel,vel_target) + 
+                                # nn.MSELoss()(decode,decode_target) + 
+                                # beta*(-0.5 * torch.sum(1 + logvar_latent - mean_latent.pow(2) - logvar_latent.exp())))/self.num_mini_batches
+                # VAE 封装前写法 csq 25/9/4
+
                 # Surrogate loss
                 ratio = torch.exp(actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch))
                 surrogate = -torch.squeeze(advantages_batch) * ratio
@@ -184,7 +197,7 @@ class PPO:
                 else:
                     value_loss = (returns_batch - value_batch).pow(2).mean()
 
-                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean() + autoenc_loss
+                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean() # RL Loss
 
                 # Gradient step
                 self.optimizer.zero_grad()
@@ -194,11 +207,36 @@ class PPO:
 
                 mean_value_loss += value_loss.item()
                 mean_surrogate_loss += surrogate_loss.item()
-                mean_autoenc_loss += autoenc_loss.item()
+                mean_entropy_loss += entropy_batch.mean().item()
+
+                # Traing VAE
+                # 可以训练多次 csq 25/9/4
+                self.vae_optimizer.zero_grad()
+                vae_loss_dict = self.actor_critic.vae.loss_fn(obs_hist_batch, obs_batch, prev_critic_obs_batch[:,73:76], self.kl_weight)
+                valid = (dones_batch == 0).squeeze()
+                vae_loss = torch.mean(vae_loss_dict['loss'][valid])
+                vae_loss.backward()
+                nn.utils.clip_grad_norm_(self.actor_critic.vae.parameters(), self.cfg.max_grad_norm)
+                self.vae_optimizer.step()
+                with torch.no_grad():
+                    recons_loss = torch.mean(vae_loss_dict['recons_loss'][valid])
+                    vel_loss = torch.mean(vae_loss_dict['vel_loss'][valid])
+                    kld_loss = torch.mean(vae_loss_dict['kld_loss'][valid]) 
+
+                mean_recons_loss += recons_loss.item()
+                mean_vel_loss += vel_loss.item()
+                mean_kld_loss += kld_loss.item()
+                mean_autoenc_loss += vel_loss.item()
 
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
         mean_surrogate_loss /= num_updates
+        mean_entropy_loss /= num_updates
+        mean_recons_loss /= num_updates
+        mean_kld_loss /= num_updates
+        mean_vel_loss /= num_updates
+
         self.storage.clear()
 
-        return mean_value_loss, mean_surrogate_loss, mean_autoenc_loss
+        return mean_value_loss, mean_surrogate_loss, mean_autoenc_loss, \
+                mean_entropy_loss, mean_kld_loss, mean_vel_loss, mean_recons_loss

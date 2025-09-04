@@ -398,8 +398,8 @@ Stephen Brawner (brawner@gmail.com)
     <collision>
       <origin rpy="1.5707963267948966 0 0" xyz="0 0.0 0" />
       <geometry>
-        <mesh filename="../dae/left_wheel.dae" />
-        <!-- <cylinder length="0.045" radius="0.086" /> -->
+        <!-- <mesh filename="../dae/left_wheel.dae" /> -->
+        <cylinder length="0.045" radius="0.086" />
       </geometry>
     </collision>
   </link>
@@ -704,8 +704,8 @@ Stephen Brawner (brawner@gmail.com)
     <collision>
       <origin rpy="1.5707963267948966 0 0" xyz="0 -0.0 0" />
       <geometry>
-        <mesh filename="../dae/right_wheel.dae" />
-        <!-- <cylinder length="0.045" radius="0.086" /> -->
+        <!-- <mesh filename="../dae/right_wheel.dae" /> -->
+        <cylinder length="0.045" radius="0.086" />
       </geometry>
     </collision>
   </link>
@@ -1010,8 +1010,8 @@ Stephen Brawner (brawner@gmail.com)
     <collision>
       <origin rpy="1.5707963267948966 0 0" xyz="0 0.0 0" />
       <geometry>
-        <mesh filename="../dae/left_wheel.dae" />
-        <!-- <cylinder length="0.045" radius="0.086" /> -->
+        <!-- <mesh filename="../dae/left_wheel.dae" /> -->
+        <cylinder length="0.045" radius="0.086" /> 
       </geometry>
     </collision>
   </link>
@@ -1315,8 +1315,8 @@ Stephen Brawner (brawner@gmail.com)
     <collision>
       <origin rpy="1.5707963267948966 0 0" xyz="0 -0.0 0" />
       <geometry>
-        <mesh filename="../dae/right_wheel.dae" />
-        <!-- <cylinder length="0.045" radius="0.086" /> -->
+        <!-- <mesh filename="../dae/right_wheel.dae" /> -->
+        <cylinder length="0.045" radius="0.086" /> 
       </geometry>
     </collision>
   </link>

@@ -94,11 +94,7 @@ class Go2w(LeggedRobot):
         self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_tensor).view(self.num_envs, -1, 13)
         # 机器人各部分刚体信息
 
-        self.gripperMover_handles = self.gym.find_asset_rigid_body_index(self.robot_asset, "gripper_link")
         self.base_handles = self.gym.find_asset_rigid_body_index(self.robot_asset, "base_link")
-        self._gripper_state = self.rigid_body_states[:, self.gripperMover_handles][:, 0:13]
-        self._gripper_pos = self.rigid_body_states[:, self.gripperMover_handles][:, 0:3]
-        self._gripper_rot = self.rigid_body_states[:, self.gripperMover_handles][:, 3:7]
         self.base_pos = self.rigid_body_states[:, self.base_handles][:, 0:3]
         # 这部分是那篇论文中的将基座和基座上固定的机械手的信息拿取出来
         
@@ -106,13 +102,15 @@ class Go2w(LeggedRobot):
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0] # 各DOF位置信息
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1] # 各DOF速度信息
         self.base_quat = self.root_states[:, 3:7] # 机器人基座四元数信息
-        self._local_gripper_pos = quat_rotate_inverse(self.base_quat,self.base_pos - self._gripper_pos) 
         # 这个应该还是获得机械抓手的位置的
         #get local frame quat
         #self.local_frame_quat = 
 
         
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3)
+        
+        assert not torch.isnan(self.contact_forces).any(), "privileged_obs contains NaN values"
+        assert not torch.isinf(self.contact_forces).any(), "privileged_obs contains Inf values"
         
         self.episode_length_buf += 1
         self.common_step_counter += 1
@@ -227,8 +225,8 @@ class Go2w(LeggedRobot):
         # Blind, no perceptive observation
         # print('计算')
         #self._local_gripper_pos = torch.zeros((self.num_envs,3),dtype=torch.float,device=self.device)
-        # self.base_height_command = torch.tensor(self.cfg.rewards.base_height_target,dtype=torch.float,device=self.device)
-        # self.base_height_command = self.base_height_command.unsqueeze(0).repeat(self.num_envs,1)
+        self.base_height_command = torch.tensor(self.cfg.rewards.base_height_target,dtype=torch.float,device=self.device)
+        self.base_height_command = self.base_height_command.unsqueeze(0).repeat(self.num_envs,1)
 
         self.dof_err = self.dof_pos - self.default_dof_pos # 机器人当前各DOF位置 - 机器人默认各DOF位置 看作一种位置的偏差值
         self.dof_err[:,self.wheel_indices] = 0 # 轮子的位置偏差值设置为0，因为轮子在每个位置都是一样的

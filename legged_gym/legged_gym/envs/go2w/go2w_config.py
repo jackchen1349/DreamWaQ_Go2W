@@ -156,12 +156,13 @@ class GO2WRoughCfg( LeggedRobotCfg ):
 class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
+        learning_rate = 1.e-3
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
         experiment_name = 'rough_go2w'
         num_steps_per_env = 24 # per iteration
         max_iterations = 30000
-        load_run = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Sep02_15-30-24_"
+        load_run = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Sep05_20-33-08_"
         checkpoint = -1
         resume = False
         resume_path = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Aug23_13-57-15_/model_10000.pt"

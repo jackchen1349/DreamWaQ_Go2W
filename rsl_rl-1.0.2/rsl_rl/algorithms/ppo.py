@@ -54,7 +54,7 @@ class PPO:
                  schedule="fixed",
                  desired_kl=0.01,
                  device='cpu',
-                 kl_weight = 1.0
+                 kl_weight = 0.5
                  ):
 
         self.device = device
@@ -212,11 +212,11 @@ class PPO:
                 # Traing VAE
                 # 可以训练多次 csq 25/9/4
                 self.vae_optimizer.zero_grad()
-                vae_loss_dict = self.actor_critic.vae.loss_fn(obs_hist_batch, obs_batch, prev_critic_obs_batch[:,73:76], self.kl_weight)
+                vae_loss_dict = self.actor_critic.vae.loss_fn(obs_hist_batch, obs_batch, critic_obs_batch[:,73:76], self.kl_weight)
                 valid = (dones_batch == 0).squeeze()
                 vae_loss = torch.mean(vae_loss_dict['loss'][valid])
                 vae_loss.backward()
-                nn.utils.clip_grad_norm_(self.actor_critic.vae.parameters(), self.cfg.max_grad_norm)
+                nn.utils.clip_grad_norm_(self.actor_critic.vae.parameters(), self.max_grad_norm)
                 self.vae_optimizer.step()
                 with torch.no_grad():
                     recons_loss = torch.mean(vae_loss_dict['recons_loss'][valid])
@@ -226,7 +226,7 @@ class PPO:
                 mean_recons_loss += recons_loss.item()
                 mean_vel_loss += vel_loss.item()
                 mean_kld_loss += kld_loss.item()
-                mean_autoenc_loss += vel_loss.item()
+                mean_autoenc_loss += vae_loss.item()
 
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
@@ -235,6 +235,7 @@ class PPO:
         mean_recons_loss /= num_updates
         mean_kld_loss /= num_updates
         mean_vel_loss /= num_updates
+        mean_autoenc_loss /= num_updates
 
         self.storage.clear()
 

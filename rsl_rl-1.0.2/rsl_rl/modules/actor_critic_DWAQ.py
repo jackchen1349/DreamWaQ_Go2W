@@ -9,6 +9,7 @@ from .estimator import VAE
 class ActorCritic_DWAQ(nn.Module):
     def __init__(
         self, 
+        num_env_obs,
         num_actor_obs, 
         num_critic_obs, 
         num_actions, 
@@ -68,13 +69,17 @@ class ActorCritic_DWAQ(nn.Module):
 
         # VAE
         self.vae = VAE(
-            num_obs = num_actor_obs,
+            num_obs = num_env_obs,
             num_history = num_history,
             num_latent = num_latent,
             activation = activation,
-            decoder_hidden_dims = [64, 128, 48]
+            decoder_hidden_dims = [64, 128]
         )
   
+        print(f"Actor MLP:", {self.actor})
+        print(f"Critic MLP", {self.critic})
+        print(f"VAE MLP", self.vae)
+
         self.std = nn.Parameter(init_noise_std * torch.ones(num_actions))
         self.distribution = None
         
@@ -132,8 +137,15 @@ class ActorCritic_DWAQ(nn.Module):
         self.distribution = Normal(mean, mean * 0.0 + std)
 
     def act(self, observations, obs_history, **kwargs):
+        assert observations.min() >= -100.0 and observations.max() <= 100.0, "Input data should be normalized"
+        assert obs_history.min() >= -100.0 and obs_history.max() <= 100.0, "Input data should be normalized"
         estimation, latent_params = self.vae(obs_history)
-        observations = torch.cat((estimation,observations),dim=-1)
+        z, v = estimation
+        assert not torch.isnan(z).any(), "z contains NaN values"
+        assert not torch.isinf(z).any(), "z contains Inf values"
+        assert not torch.isnan(v).any(), "v contains NaN values"
+        assert not torch.isinf(v).any(), "v contains Inf values"
+        observations = torch.cat((z, v, observations),dim=-1)
         self.update_distribution(observations)
         return self.distribution.sample()
 
@@ -142,7 +154,8 @@ class ActorCritic_DWAQ(nn.Module):
 
     def act_inference(self, observations,obs_history):
         estimation, latent_params = self.vae(obs_history)
-        observations = torch.cat((estimation,observations),dim=-1)
+        z, v = estimation
+        observations = torch.cat((z, v, observations),dim=-1)
         actions_mean = self.actor(observations)
         return actions_mean
 

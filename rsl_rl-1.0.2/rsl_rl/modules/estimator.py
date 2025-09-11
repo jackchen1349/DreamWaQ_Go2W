@@ -1,6 +1,5 @@
 import torch.nn as nn
 import torch
-from utils.torch_utils import  get_activation,check_cnnoutput
 from torch.distributions import Normal
 from torch.nn import functional as F
 
@@ -12,7 +11,7 @@ class VAE(nn.Module):
                  num_history,
                  num_latent, 
                  activation = 'elu',
-                 decoder_hidden_dims = [64, 128, 48],): # 默认网络设置为DreamWaQ论文中的网络架构
+                 decoder_hidden_dims = [64, 128],): # 默认网络设置为DreamWaQ论文中的网络架构
         super(VAE, self).__init__()
         self.num_obs = num_obs
         self.num_history = num_history
@@ -24,7 +23,7 @@ class VAE(nn.Module):
             num_history = num_history,
             num_latent = num_latent * 4, # 加宽为4倍
             activation = activation,
-            adaptation_module_branch_hidden_dims=[128, 64],
+            adaptation_module_branch_hidden_dims=[128],
         )
 
         self.latent_mu = nn.Linear(num_latent * 4, num_latent)
@@ -77,11 +76,14 @@ class VAE(nn.Module):
         var = torch.exp(0.5 * logvar)
         eps = torch.randn_like(var)
         return eps * var + mu
-    
+      
     def loss_fn(self, obs_history, next_obs, vel_target, kld_weight = 1.0):
         estimation, latent_params = self.forward(obs_history)
         z, v = estimation
         latent_mu, latent_var, vel_mu, vel_var = latent_params 
+        
+        assert not torch.isnan(vel_target).any(), "vel_target contains NaN values"
+        assert not torch.isinf(vel_target).any(), "vel_target contains Inf values"
 
         # Reconstruction next_obs loss
         recons = self.decode(z,vel_target) # 这里传的是实际速度而不是估计出来的速度 为了让z和速度预测解耦 更好地学到z
@@ -109,68 +111,6 @@ class VAE(nn.Module):
         latent_mu, latent_var, vel_mu, vel_var = latent_params
         return [latent_mu, vel_mu]
 
-
-class TCNHistoryEncoder(nn.Module): # 暂时不用 csq 25/9/4
-    def __init__(self, 
-                 num_obs,
-                 num_history,
-                 num_latent,
-                 activation = 'elu',):
-        super(TCNHistoryEncoder, self).__init__()
-        self.num_obs = num_obs
-        self.num_history = num_history  
-        self.num_latent = num_latent    
-
-        activation_fn = get_activation(activation)
-        self.tsteps = tsteps = num_history
-        input_size = num_obs
-        self.encoder = nn.Sequential(
-            nn.Linear(input_size, 128),
-            activation_fn,
-            nn.Linear(128, 32),
-        )
-        if tsteps == 50:
-            self.conv_layers = nn.Sequential(
-                    nn.Conv1d(in_channels = 32, out_channels = 32, kernel_size = 8, stride = 4), nn.LeakyReLU(),
-                    nn.Conv1d(in_channels = 32, out_channels = 32, kernel_size = 5, stride = 1), nn.LeakyReLU(),
-                    nn.Conv1d(in_channels = 32, out_channels = 32, kernel_size = 5, stride = 1), nn.LeakyReLU(), nn.Flatten())
-            last_dim = 32 * 3
-        elif tsteps == 10:
-            self.conv_layers = nn.Sequential(
-                nn.Conv1d(in_channels = 32, out_channels = 32, kernel_size = 4, stride = 2), nn.LeakyReLU(), 
-                nn.Conv1d(in_channels = 32, out_channels = 32, kernel_size = 2, stride = 1), nn.LeakyReLU(), 
-                nn.Flatten())
-            last_dim = 32 * 3
-        elif tsteps == 20:
-            self.conv_layers = nn.Sequential(
-                nn.Conv1d(in_channels = 32, out_channels = 32, kernel_size = 6, stride = 2), nn.LeakyReLU(), 
-                nn.Conv1d(in_channels = 32, out_channels = 32, kernel_size = 4, stride = 2), nn.LeakyReLU(), 
-                nn.Flatten())
-            last_dim = 32 * 3
-        else:
-            self.conv_layers = nn.Sequential(
-                nn.Conv1d(in_channels = 32, out_channels = 32, kernel_size = 4, stride = 2), nn.LeakyReLU(), 
-                nn.Conv1d(in_channels = 32, out_channels = 32, kernel_size = 2, stride = 1), nn.LeakyReLU(), 
-                nn.Flatten())
-            last_dim = check_cnnoutput(input_size = (32,self.tsteps), list_modules = [self.conv_layers])
-
-        self.output_layer = nn.Sequential(
-            nn.Linear(last_dim, self.num_latent),
-            activation_fn,
-        )
-
-    def forward(self, obs_history):
-        """
-        obs_history.shape = (bz, T , obs_dim)
-        """
-        bs = obs_history.shape[0]
-        T = self.tsteps
-        projection = self.encoder(obs_history) # (bz, T , 32) -> (bz, 32, T) bz, channel_dim, Temporal_dim
-        output = self.conv_layers(projection.permute(0, 2, 1)) # (bz, last_dim)
-        output = self.output_layer(output)
-        return output
-    
-
 class MLPHistoryEncoder(nn.Module):
 
     def __init__(self, 
@@ -178,7 +118,7 @@ class MLPHistoryEncoder(nn.Module):
                  num_history,
                  num_latent,
                  activation = 'elu',
-                 adaptation_module_branch_hidden_dims = [128, 64],): #默认设置为DreamWaQ论文设置 csq 25/9/4
+                 adaptation_module_branch_hidden_dims = [128],): #默认设置为DreamWaQ论文设置 csq 25/9/4
         super(MLPHistoryEncoder, self).__init__()
         self.num_obs = num_obs
         self.num_history = num_history
@@ -211,3 +151,22 @@ class MLPHistoryEncoder(nn.Module):
         output = self.encoder(obs_history)
         return output
 
+
+def get_activation(act_name):
+    if act_name == "elu":
+        return nn.ELU()
+    elif act_name == "selu":
+        return nn.SELU()
+    elif act_name == "relu":
+        return nn.ReLU()
+    elif act_name == "crelu":
+        return nn.CReLU()
+    elif act_name == "lrelu":
+        return nn.LeakyReLU()
+    elif act_name == "tanh":
+        return nn.Tanh()
+    elif act_name == "sigmoid":
+        return nn.Sigmoid()
+    else:
+        print("invalid activation function!")
+        return None

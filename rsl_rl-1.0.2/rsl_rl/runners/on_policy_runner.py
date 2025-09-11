@@ -62,7 +62,8 @@ class OnPolicyRunner:
         num_latent = 16 # 隐变量数量 csq 25/9/4
         num_hist = 5 # 历史obs区间大小 csq 25/9/4 
         actor_critic_class = eval(self.cfg["policy_class_name"]) # ActorCritic
-        actor_critic: ActorCritic_DWAQ = actor_critic_class(self.env.num_obs + num_latent + 3,
+        actor_critic: ActorCritic_DWAQ = actor_critic_class(self.env.num_obs,
+                                                        self.env.num_obs + num_latent + 3,
                                                         num_critic_obs,
                                                         self.env.num_actions,
                                                         num_hist,
@@ -94,7 +95,19 @@ class OnPolicyRunner:
         if init_at_random_ep_len:
             self.env.episode_length_buf = torch.randint_like(self.env.episode_length_buf, high=int(self.env.max_episode_length))
         obs,obs_hist = self.env.get_observations()
+
+        assert not torch.isnan(obs).any(), "obs contains NaN values"
+        assert not torch.isinf(obs).any(), "obs contains Inf values"
+        assert not torch.isnan(obs_hist).any(), "obs_hist contains NaN values"
+        assert not torch.isinf(obs_hist).any(), "obs_hist contains Inf values"
+
         privileged_obs,prev_critic_obs = self.env.get_privileged_observations()
+
+        assert not torch.isnan(privileged_obs).any(), "privileged_obs contains NaN values"
+        assert not torch.isinf(privileged_obs).any(), "privileged_obs contains Inf values"
+        assert not torch.isnan(prev_critic_obs).any(), "prev_critic_obs contains NaN values"
+        assert not torch.isinf(prev_critic_obs).any(), "prev_critic_obs contains Inf values"
+
         critic_obs = privileged_obs if privileged_obs is not None else obs
         obs, critic_obs,prev_critic_obs, obs_hist = obs.to(self.device), critic_obs.to(self.device),prev_critic_obs.to(self.device),obs_hist.to(self.device)
         self.alg.actor_critic.train() # switch to train mode (for dropout for example)

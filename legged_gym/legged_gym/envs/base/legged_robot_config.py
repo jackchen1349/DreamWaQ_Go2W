@@ -1,38 +1,8 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: BSD-3-Clause
-# 
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2021 ETH Zurich, Nikita Rudin
-
 from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
     class env:
-        num_envs = 4096
+        num_envs = 6000
         num_observations = 45  
         num_obs_hist = 5
         num_privileged_obs = 286 # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
@@ -49,7 +19,7 @@ class LeggedRobotCfg(BaseConfig):
         curriculum = True
         static_friction = 1.0
         dynamic_friction = 1.0
-        restitution = 0.5
+        restitution = 0.
         # rough terrain only:
         measure_heights = True
         measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
@@ -109,7 +79,7 @@ class LeggedRobotCfg(BaseConfig):
         default_dof_drive_mode = 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
         replace_cylinder_with_capsule = True # replace collision cylinders with capsules, leads to faster/more stable simulation
-        flip_visual_attachments = False # Some .obj meshes must be flipped from y-up to z-up
+        flip_visual_attachments = True # Some .obj meshes must be flipped from y-up to z-up
         
         density = 0.001
         angular_damping = 0.
@@ -222,7 +192,7 @@ class LeggedRobotCfg(BaseConfig):
             contact_collection = 2 # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
 
 class LeggedRobotCfgPPO(BaseConfig):
-    seed = 5
+    seed = 1
     runner_class_name = 'OnPolicyRunner'
     class policy:
         init_noise_std = 1.0
@@ -242,12 +212,12 @@ class LeggedRobotCfgPPO(BaseConfig):
         entropy_coef = 0.01
         num_learning_epochs = 5
         num_mini_batches = 4 # mini batch size = num_envs*nsteps / nminibatches
-        learning_rate = 1.e-3 #5.e-4
+        learning_rate = 5.e-4 # 1.e-3
         schedule = 'adaptive' # could be adaptive, fixed
         gamma = 0.99
         lam = 0.95
         desired_kl = 0.01
-        max_grad_norm = 1.
+        max_grad_norm = 1.0
 
     class runner:
         policy_class_name = 'ActorCritic_DWAQ'

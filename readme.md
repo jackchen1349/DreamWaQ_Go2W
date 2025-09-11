@@ -5,4 +5,5 @@ This repo contains implementation of the paper [Learning Robust Quadrupedal Loco
 Sincerely thank the original author of the repository ：
 
 [DreamWaQ Implementated by Manaro-Alpha](https://github.com/Manaro-Alpha/DreamWaQ)
+
 [DreamWaQ Implementated by LucienJi](https://github.com/LucienJi/MetaRobotics)

@@ -16,7 +16,9 @@ class ActorCritic_DWAQ(nn.Module):
         num_history, 
         num_latent, 
         activation="elu", 
-        init_noise_std=1.0,   
+        init_noise_std=1.0,
+        vae_sigma_min=0.0,
+        vae_sigma_max=5.0,
     ):
         super().__init__()
 
@@ -67,13 +69,15 @@ class ActorCritic_DWAQ(nn.Module):
         # )
         # 论文中的VAE架构，封装之后保存原本实现 csq 25/9/4   
 
-        # VAE
+        # VAE with constrained reparameterization
         self.vae = VAE(
             num_obs = num_env_obs,
             num_history = num_history,
             num_latent = num_latent,
             activation = activation,
-            decoder_hidden_dims = [64, 128]
+            decoder_hidden_dims = [64, 128],
+            sigma_min = vae_sigma_min,
+            sigma_max = vae_sigma_max
         )
   
         print(f"Actor MLP:", {self.actor})
@@ -162,6 +166,18 @@ class ActorCritic_DWAQ(nn.Module):
     def evaluate(self, critic_observations, **kwargs):
         value = self.critic(critic_observations)
         return value
+    
+    def get_vae_constraint_info(self, obs_history):
+        """
+        Get information about VAE constraint usage for monitoring.
+        
+        Args:
+            obs_history: Observation history tensor
+            
+        Returns:
+            dict: Dictionary containing constraint statistics
+        """
+        return self.vae.get_constrained_latent_params(obs_history)
 
 def get_activation(act_name):
     if act_name == "elu":

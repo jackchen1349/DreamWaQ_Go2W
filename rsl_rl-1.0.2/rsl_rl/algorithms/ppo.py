@@ -54,7 +54,7 @@ class PPO:
                  schedule="fixed",
                  desired_kl=0.01,
                  device='cpu',
-                 kl_weight = 0.5
+                 kl_weight = 0.1
                  ):
 
         self.device = device

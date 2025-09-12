@@ -2,7 +2,7 @@ This repo contains implementation of the paper [Learning Robust Quadrupedal Loco
 
 [go2w_rl_gym](https://github.com/ShengqianChen/go2w_rl_gym)
 
-Sincerely thank the original author of the repository ：
+Sincerely thank the original authors of the repositories ：
 
 [DreamWaQ Implementated by Manaro-Alpha](https://github.com/Manaro-Alpha/DreamWaQ)
 

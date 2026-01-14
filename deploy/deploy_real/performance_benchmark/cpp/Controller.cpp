@@ -1,4 +1,5 @@
 #include "Controller.h"
+#include "benchmark_timer.h"
 #include <yaml-cpp/yaml.h>
 #include <algorithm>
 #include <cmath>
@@ -8,6 +9,9 @@
 
 #define TOPIC_LOWCMD "rt/lowcmd"
 #define TOPIC_LOWSTATE "rt/lowstate"
+
+// 全局性能监控器（在 benchmark_main.cpp 中定义）
+extern benchmark::PerformanceMonitor g_monitor;
 
 Controller::Controller(const std::string &net_interface)
 {
@@ -277,9 +281,10 @@ void Controller::default_pos_state()
     }
 }
 
-// Matching Python run() exactly
+// Matching Python run() exactly - WITH BENCHMARK TIMING
 void Controller::run()
 {
+    g_monitor.startLoop();  // 开始循环计时
     counter++;
     
     auto low_state = mLowStateBuf.GetDataPtr();
@@ -395,12 +400,16 @@ void Controller::run()
         obs_hist_buf(num_obs * 4 + i) = obs(i);
     }
     
-    // DreamWaQ forward pass (matching Python exactly)
+    // DreamWaQ forward pass (matching Python exactly) - WITH TIMING
+    g_monitor.startInference();  // 开始推理计时
+    
+    g_monitor.startEncoder();  // 开始 encoder 计时
     torch::Tensor obs_hist_tensor = torch::from_blob(obs_hist_buf.data(), {obs_hist_buf.size()}, torch::kFloat).clone();
     
     std::vector<torch::jit::IValue> encoder_inputs;
     encoder_inputs.push_back(obs_hist_tensor);
     torch::Tensor h = encoder.forward(encoder_inputs).toTensor();
+    g_monitor.endEncoder();  // 结束 encoder 计时
     
     std::vector<torch::jit::IValue> h_inputs;
     h_inputs.push_back(h);
@@ -418,9 +427,13 @@ void Controller::run()
     torch::Tensor obs_tensor = torch::from_blob(obs.data(), {obs.size()}, torch::kFloat).clone();
     torch::Tensor obs_all = torch::cat({code, obs_tensor}, -1);
     
+    g_monitor.startActor();  // 开始 actor 计时
     std::vector<torch::jit::IValue> actor_inputs;
     actor_inputs.push_back(obs_all);
     torch::Tensor action_tensor = actor.forward(actor_inputs).toTensor();
+    g_monitor.endActor();  // 结束 actor 计时
+    
+    g_monitor.endInference();  // 结束推理计时
     
     // Copy action output
     std::array<float, 16> action_sim_out;
@@ -430,6 +443,10 @@ void Controller::run()
     qj = trans_s2r(qj_sim);
     action = trans_s2r(action_sim_out);
     dqj = trans_s2r(dqj_sim);
+    
+    // 用于控制质量测量
+    std::array<float, 12> target_positions;
+    std::array<float, 12> actual_positions;
     
     // Send motor commands (matching Python exactly)
     for (int i = 0; i < 16; i++)
@@ -448,13 +465,23 @@ void Controller::run()
         else
         {
             // Leg: position control (matching Python)
-            low_cmd.motor_cmd()[motor_idx].q() = default_real_angles[i] + action[i] * action_scale;
+            float target_pos = default_real_angles[i] + action[i] * action_scale;
+            low_cmd.motor_cmd()[motor_idx].q() = target_pos;
             low_cmd.motor_cmd()[motor_idx].dq() = 0.0f;
             low_cmd.motor_cmd()[motor_idx].kp() = kps[i];
             low_cmd.motor_cmd()[motor_idx].kd() = kds[i];
             low_cmd.motor_cmd()[motor_idx].tau() = 0.0f;
+            
+            // 记录控制质量数据
+            target_positions[i] = target_pos;
+            actual_positions[i] = qj[i];
         }
     }
+    
+    // 记录控制质量（匹配 Python）
+    g_monitor.recordControlQuality(target_positions.data(), actual_positions.data(), 12);
+    
+    g_monitor.endLoop();  // 结束循环计时（在 sleep 之前！与 Python 一致）
     
     // Command is sent by background thread
     usleep(static_cast<useconds_t>(control_dt * 1000000));

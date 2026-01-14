@@ -84,12 +84,12 @@ class Controller:
         self.remote_controller = RemoteController()
         
         # 加载模型文件
-        self.actor = torch.jit.load('/home/drl/deploy/pre_train/g2wDWAQ/actor_dwaq.pt')
-        self.encoder = torch.jit.load('/home/drl/deploy/pre_train/g2wDWAQ/encoder_dwaq.pt')
-        self.latent_mu = torch.jit.load('/home/drl/deploy/pre_train/g2wDWAQ/latent_mu_dwaq.pt')
-        self.latent_var = torch.jit.load('/home/drl/deploy/pre_train/g2wDWAQ/latent_var_dwaq.pt')
-        self.vel_mu = torch.jit.load('/home/drl/deploy/pre_train/g2wDWAQ/vel_mu_dwaq.pt')
-        self.vel_var = torch.jit.load('/home/drl/deploy/pre_train/g2wDWAQ/vel_var_dwaq.pt')
+        self.actor = torch.jit.load('/home/jackie/DreamWaQ_Go2W/deploy/pre_train/g2wDWAQ/actor_dwaq.pt')
+        self.encoder = torch.jit.load('/home/jackie/DreamWaQ_Go2W/deploy/pre_train/g2wDWAQ/encoder_dwaq.pt')
+        self.latent_mu = torch.jit.load('/home/jackie/DreamWaQ_Go2W/deploy/pre_train/g2wDWAQ/latent_mu_dwaq.pt')
+        self.latent_var = torch.jit.load('/home/jackie/DreamWaQ_Go2W/deploy/pre_train/g2wDWAQ/latent_var_dwaq.pt')
+        self.vel_mu = torch.jit.load('/home/jackie/DreamWaQ_Go2W/deploy/pre_train/g2wDWAQ/vel_mu_dwaq.pt')
+        self.vel_var = torch.jit.load('/home/jackie/DreamWaQ_Go2W/deploy/pre_train/g2wDWAQ/vel_var_dwaq.pt')
 
         #过程变量初始化
         self.qj = np.zeros(config.num_actions, dtype=np.float32)
@@ -341,10 +341,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # 加载配置文件
-    config_path = f"/home/drl/deploy/deploy_real/configs/{args.config}"
+    config_path = f"/home/jackie/DreamWaQ_Go2W/deploy/deploy_real/configs/{args.config}"
     config = Config(config_path)
-
-    
 
     # 初始化DDS通信
     ChannelFactoryInitialize(0, args.net)

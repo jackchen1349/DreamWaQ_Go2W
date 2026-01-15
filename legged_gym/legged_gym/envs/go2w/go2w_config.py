@@ -137,22 +137,17 @@ class GO2WRoughCfg( LeggedRobotCfg ):
             termination = -0.8 # 25/8/23 zsy说不用加
             tracking_lin_vel = 1.5 # 惩罚当前机器人在X、Y方向速度与命令不一致
             tracking_ang_vel = 0.75 # 惩罚当前机器人在角度转向速度与命令不一致
-            lin_vel_z = -1 # 惩罚机器人在Z轴上的速度 对应现象为机器人上下起伏很大
+            lin_vel_z = -1.0 # 惩罚机器人在Z轴上的速度 对应现象为机器人上下起伏很大
             ang_vel_xy = -0.05 # 惩罚机器人在X轴和Y轴上的角速度 对应现象为遏制机器人左右晃动和前后晃动
-            orientation = -0.5 # 强烈鼓励机器人与初始姿态的基座方向一致
-            torques = -0.0003 # 机器人运控各电机输出的力矩的平方和 让模型找到最省力矩的方案
-            dof_vel = -1e-7
-            dof_acc = -1e-7
-            wheel_acc = -1e-9
-            feet_air_time =  0
-            collision = -1
-            feet_stumble = -0.1
+            torques = -0.00001 # 机器人运控各电机输出的力矩的平方和 让模型找到最省力矩的方案
+            dof_acc = -2.5e-7
+            wheel_acc = -2.5e-9
+            collision = -10.0
+            feet_stumble = -1.0
             action_rate = -0.01
-            stand_still = -0.5
-            dof_pos_limits = -0
-            hip_action_l2 = -0
-            hip_pos = -0.7 # 惩罚髋关节不在默认位置
-            dof_error = -0.2 
+            stand_still = -0.1
+            hip_pos = -0.5 # 惩罚髋关节不在默认位置
+            dof_error = -0.1 
 
 class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
@@ -163,7 +158,7 @@ class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
         experiment_name = 'rough_go2w'
         num_steps_per_env = 24 # per iteration
         max_iterations = 50000
-        load_run = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Sep05_20-33-08_"
+        load_run = "/root/DreamWaQ_Go2W/legged_gym/logs/rough_go2w/Jan15_13-13-31_/"
         checkpoint = -1
         resume = False
         resume_path = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Aug23_13-57-15_/model_10000.pt"

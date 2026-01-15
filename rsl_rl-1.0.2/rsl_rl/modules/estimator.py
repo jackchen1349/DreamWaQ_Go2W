@@ -123,7 +123,7 @@ class VAE(nn.Module):
         # Reconstruction next_obs loss
         recons = self.decode(z,vel_target) # 这里传的是实际速度而不是估计出来的速度 为了让z和速度预测解耦 更好地学到z
         next_obs_without_command = next_obs.clone()
-        next_obs_without_command[:, 6:9] = vel_target
+        next_obs_without_command[:, 6:9] = 0
         recons_loss = F.mse_loss(recons, next_obs_without_command, reduction='none').mean(-1)
 
         # Supervised loss

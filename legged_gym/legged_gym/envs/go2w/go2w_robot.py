@@ -28,7 +28,9 @@ class Go2w(LeggedRobot):
         """
         
         self.obs_hist_buf = self.obs_hist_buf[:,73:]
-        self.obs_hist_buf = torch.cat((self.obs_hist_buf,self.obs_buf),dim = -1)
+        self.obs_buf_without_command = self.obs_buf.clone()
+        self.obs_buf_without_command[:, 6:9] = 0
+        self.obs_hist_buf = torch.cat((self.obs_hist_buf,self.obs_buf_without_command),dim = -1)
         self.prev_privileged_obs_buf = self.privileged_obs_buf
 
 
@@ -776,6 +778,11 @@ class Go2w(LeggedRobot):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
             print("termination_contact_names[i]",termination_contact_names[i],"indice[i]:",self.termination_contact_indices[i])
         
+        hip_names = ["FR_hip_joint", "FL_hip_joint", "RR_hip_joint", "RL_hip_joint"]
+        self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
+        for i, name in enumerate(hip_names):
+            self.hip_indices[i] = self.dof_names.index(name)
+
         self.wheel_indices = torch.zeros(len(wheel_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(wheel_names)):
             self.wheel_indices[i] = self.gym.find_actor_dof_handle(self.envs[0], self.actor_handles[0], wheel_names[i])

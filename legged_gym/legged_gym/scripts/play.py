@@ -1,6 +1,6 @@
 import os
 import sys  
-sys.path.append("/home/csq/DreamWaQ/legged_gym")
+sys.path.append("/root/DreamWaQ_Go2W/legged_gym")
 import matplotlib
 import isaacgym
 from legged_gym import LEGGED_GYM_ROOT_DIR

@@ -923,8 +923,19 @@ class Go2w(LeggedRobot):
         return torch.sum(torch.square(self.dof_vel), dim=1)
     
     def _reward_dof_acc(self):
-        # Penalize dof accelerations
-        return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1)
+        # 计算所有电机的加速度
+        dof_acc = (self.last_dof_vel - self.dof_vel) / self.dt
+        # 创建mask排除轮子电机
+        mask = torch.ones(self.num_dof, dtype=torch.bool, device=self.device)
+        mask[self.wheel_indices] = False
+        # 只对非轮子电机求和
+        return torch.sum(torch.square(dof_acc[:, mask]), dim=1)
+
+    def _reward_wheel_acc(self):
+        # 只计算轮子电机的加速度
+        wheel_acc = (self.last_dof_vel[:, self.wheel_indices] - self.dof_vel[:, self.wheel_indices]) / self.dt
+        # 对轮子电机求和
+        return torch.sum(torch.square(wheel_acc), dim=1)
     
     def _reward_action_rate(self):
         # Penalize changes in actions
@@ -1002,7 +1013,12 @@ class Go2w(LeggedRobot):
         #self.episode_metric_sums['leg_action_l2'] += action_l2
         return action_l2
     
-    def _reward_hip_default(self):
-        hip_err = torch.sum((self.dof_pos[:, [0, 4, 8, 12]] - self.default_dof_pos[:, [0, 4, 8, 12]]) ** 2, dim = 1)
-        # print("penalty",penalty.shape)
-        return hip_err
+    def _reward_hip_pos(self):
+        return torch.sum(torch.square(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1)
+
+    def _reward_dof_error(self):
+        # Go2W: 轮子的DOF误差不计入 Add by CSQ 25/12/4
+        dof_error_vec = self.dof_pos - self.default_dof_pos
+        dof_error_vec[:, self.wheel_indices] = 0  # 轮子误差不惩罚
+        dof_error = torch.sum(torch.square(dof_error_vec), dim=1)
+        return dof_error 

@@ -43,13 +43,13 @@ class GO2WRoughCfg( LeggedRobotCfg ):
         num_rows= 10 # number of terrain rows (levels)
         num_cols = 20 # number of terrain cols (types)
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
-        terrain_proportions = [0.2, 0.1, 0.25, 0.25, 0.2]
+        terrain_proportions = [0.2, 0.2, 0.2, 0.2, 0.2]
         # trimesh only:
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
 
     # 机器人初始状态
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.4] # x,y,z [m] 初始位置 四元数表示
+        pos = [0.0, 0.0, 0.42] # x,y,z [m] 初始位置 四元数表示
         # 初始关节位置
         default_joint_angles = { # = target angles [rad] when action = 0.0
             'FL_hip_joint': 0.0,   # [rad]
@@ -143,7 +143,7 @@ class GO2WRoughCfg( LeggedRobotCfg ):
             torques = -0.0003 # 机器人运控各电机输出的力矩的平方和 让模型找到最省力矩的方案
             dof_vel = -1e-7
             dof_acc = -1e-7
-            base_height = -10 # 惩罚基座高度不保持在期望的高度上
+            wheel_acc = -1e-9
             feet_air_time =  0
             collision = -1
             feet_stumble = -0.1
@@ -151,7 +151,8 @@ class GO2WRoughCfg( LeggedRobotCfg ):
             stand_still = -0.5
             dof_pos_limits = -0
             hip_action_l2 = -0
-            hip_default = -0.5 # 惩罚髋关节不在默认位置
+            hip_pos = -0.7 # 惩罚髋关节不在默认位置
+            dof_error = -0.2 
 
 class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
@@ -161,7 +162,7 @@ class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'rough_go2w'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 30000
+        max_iterations = 50000
         load_run = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Sep05_20-33-08_"
         checkpoint = -1
         resume = False

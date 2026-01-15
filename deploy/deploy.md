@@ -1,5 +1,3 @@
-# GO2W DreamWaQ 环境配置指南
-
 # Python 部署
 
 ## 依赖列表
@@ -17,9 +15,7 @@
 conda create -n deploy python=3.8 -y
 conda activate deploy
 
-# 2. 安装 PyTorch (Jetson ARM64 版)
-# 从 NVIDIA 论坛下载对应 JetPack 版本的 wheel 文件
-# https://forums.developer.nvidia.com/t/pytorch-for-jetson/
+# 2. 安装 PyTorch (Jetson ARM64 版),版本自定
 pip install torch-2.1.0-cp38-cp38-linux_aarch64.whl
 
 # 3. 安装 Python 依赖
@@ -35,7 +31,7 @@ pip install -e .
 
 ```bash
 cd DreamWaQ_Go2W/deploy/deploy_real
-python3 deploy_real_go2w_DWAQ.py eth0
+python3 deploy_real_go2w_DWAQ.py eth0 g2w.yaml
 ```
 
 ---
@@ -71,8 +67,6 @@ cmake .. && make -j$(nproc)
 sudo make install
 
 # 4. 下载 LibTorch (ARM64 版)
-# 从 PyTorch 官网下载 cxx11 ABI 版本
-# https://pytorch.org/get-started/locally/
 wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.1.0%2Bcpu.zip
 unzip libtorch-*.zip -d DreamWaQ_Go2W/deploy/deploy_real/cpp_go2w/
 
@@ -88,19 +82,5 @@ cmake .. && make -j$(nproc)
 cd DreamWaQ_Go2W/deploy/deploy_real/cpp_go2w/build
 ./go2w_deploy_real eth0
 ```
-
----
-
-# 模型文件
-
-确保以下文件存在于 `deploy/pre_train/g2wDWAQ/` 目录：
-- actor_dwaq.pt
-- encoder_dwaq.pt
-- latent_mu_dwaq.pt
-- latent_var_dwaq.pt
-- vel_mu_dwaq.pt
-- vel_var_dwaq.pt
-
----
 
 

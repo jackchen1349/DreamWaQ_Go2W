@@ -1,6 +1,10 @@
 import os
 import sys  
+<<<<<<< HEAD
 sys.path.append("/root/DreamWaQ_Go2W/legged_gym")
+=======
+sys.path.append("/home/csq/DreamWaQ/legged_gym")
+>>>>>>> temp-local-changes
 import matplotlib
 import isaacgym
 from legged_gym import LEGGED_GYM_ROOT_DIR

@@ -18,13 +18,3 @@ cd performance_benchmark/cpp/build
 cd performance_benchmark
 python3 analysis/analyze_results.py results/python_benchmark.json results/cpp_benchmark.json
 ```
-
-## 测量指标
-
-| 指标 | 说明 |
-|------|------|
-| Loop Time | 控制循环执行时间（不含 sleep） |
-| Inference Time | 神经网络总推理时间 |
-| Encoder Time | Encoder 模块时间 |
-| Actor Time | Actor 网络时间 |
-| Tracking Error | 位置跟踪误差 |

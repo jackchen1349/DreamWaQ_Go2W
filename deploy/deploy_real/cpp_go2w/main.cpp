@@ -1,18 +1,18 @@
 /**
  * @file main.cpp
- * @brief GO2W DreamWaQ 强化学习部署主程序
+ * @brief GO2W DreamWaQ RL Deployment
+ * 
+ * Usage: ./go2w_dwaq <network_interface>
+ * Control flow: zero_torque -> Start -> default_pos -> A -> RL control -> Select to exit
  */
 
 #include <iostream>
 #include <csignal>
 #include "Controller.h"
 
-/// 全局控制器指针，用于信号处理函数访问
 Controller* g_controller = nullptr;
 
-/**
- * @brief 信号处理函数 - 处理 Ctrl+C 确保安全退出
- */
+// Signal handler for safe exit (Ctrl+C)
 void signalHandler(int signum)
 {
     std::cout << "\nInterrupt - entering damp mode" << std::endl;
@@ -22,28 +22,23 @@ void signalHandler(int signum)
 
 int main(int argc, char **argv)
 {
-    // 检查命令行参数
     if (argc != 2)
     {
         std::cout << "Usage: " << argv[0] << " <network_interface>" << std::endl;
         return 1;
     }
 
-    // 注册信号处理（Ctrl+C 安全退出）
     signal(SIGINT, signalHandler);
 
-    // 初始化控制器
     Controller controller(argv[1]);
     g_controller = &controller;
 
-    // 状态机流程
-    controller.zero_torque_state();    // 1. 零力矩等待 Start 键
-    controller.move_to_default_pos();  // 2. 移动到默认位置
-    controller.default_pos_state();    // 3. 等待 A 键
+    controller.zero_torque_state();
+    controller.move_to_default_pos();
+    controller.default_pos_state();
 
     std::cout << "RL Started - Press Select to exit" << std::endl;
     
-    // 主控制循环
     while (!controller.isSelectPressed())
     {
         controller.run();

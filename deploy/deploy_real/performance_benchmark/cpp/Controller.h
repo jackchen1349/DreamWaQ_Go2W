@@ -2,6 +2,7 @@
  * @file Controller.h
  * @brief GO2W Robot RL Deployment Controller (DreamWaQ)
  */
+#include <mutex>
 
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
@@ -76,6 +77,8 @@ private:
 
     // DreamWaQ models
     torch::jit::script::Module actor, encoder, latent_mu, latent_var, vel_mu, vel_var;
+
+    std::mutex cmd_mutex;
 };
 
 #endif

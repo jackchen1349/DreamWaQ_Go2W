@@ -138,6 +138,11 @@ Controller::Controller(const std::string &net_interface)
  */
 void Controller::init_cmd_go()
 {
+    std::lock_guard<std::mutex> lock(cmd_mutex); // 加锁（虽然此时线程可能未启动，但为了安全建议加上）
+    
+    // 建议增加：清零整个结构体，防止内存垃圾影响 CRC
+    std::memset(&low_cmd, 0, sizeof(low_cmd));
+
     // 消息头（固定格式）
     low_cmd.head()[0] = 0xFE;
     low_cmd.head()[1] = 0xEF;
@@ -232,6 +237,8 @@ torch::Tensor Controller::reparameterise(torch::Tensor mean, torch::Tensor logva
  */
 void Controller::create_zero_cmd()
 {
+    std::lock_guard<std::mutex> lock(cmd_mutex); // 加锁
+
     for (int i = 0; i < 20; i++)
     {
         low_cmd.motor_cmd()[i].q() = 0;
@@ -247,6 +254,8 @@ void Controller::create_zero_cmd()
  */
 void Controller::create_damping_cmd()
 {
+    std::lock_guard<std::mutex> lock(cmd_mutex); // 加锁
+
     for (int i = 0; i < 20; i++)
     {
         low_cmd.motor_cmd()[i].q() = 0;
@@ -514,29 +523,36 @@ void Controller::run()
     dqj = trans_s2r(dqj_sim);
     
     // ==================== 8. 生成电机指令 ====================
-    for (int i = 0; i < 16; i++)
+    // 【修改开始】：增加大括号来限制锁的生命周期
     {
-        int motor_idx = joint2motor_idx[i];
+        std::lock_guard<std::mutex> lock(cmd_mutex); // 加锁：只保护数据写入
         
-        if (i >= 12)
+        // Send motor commands (matching Python exactly)
+        for (int i = 0; i < 16; i++)
         {
-            // 轮子：速度控制
-            low_cmd.motor_cmd()[motor_idx].q() = 0.0f;
-            low_cmd.motor_cmd()[motor_idx].dq() = action[i] * 10.0f;  // 速度放大
-            low_cmd.motor_cmd()[motor_idx].kp() = 0.0f;
-            low_cmd.motor_cmd()[motor_idx].kd() = kds[i];
-            low_cmd.motor_cmd()[motor_idx].tau() = 0.0f;
+            int motor_idx = joint2motor_idx[i];
+            
+            if (i >= 12)
+            {
+                // Wheel: velocity control
+                low_cmd.motor_cmd()[motor_idx].q() = 0.0f;
+                low_cmd.motor_cmd()[motor_idx].dq() = action[i] * 10.0f;
+                low_cmd.motor_cmd()[motor_idx].kp() = 0.0f;
+                low_cmd.motor_cmd()[motor_idx].kd() = kds[i];
+                low_cmd.motor_cmd()[motor_idx].tau() = 0.0f;
+            }
+            else
+            {
+                // Leg: position control
+                low_cmd.motor_cmd()[motor_idx].q() = default_real_angles[i] + action[i] * action_scale;
+                low_cmd.motor_cmd()[motor_idx].dq() = 0.0f;
+                low_cmd.motor_cmd()[motor_idx].kp() = kps[i];
+                low_cmd.motor_cmd()[motor_idx].kd() = kds[i];
+                low_cmd.motor_cmd()[motor_idx].tau() = 0.0f;
+            }
         }
-        else
-        {
-            // 腿部：位置控制
-            low_cmd.motor_cmd()[motor_idx].q() = default_real_angles[i] + action[i] * action_scale;
-            low_cmd.motor_cmd()[motor_idx].dq() = 0.0f;
-            low_cmd.motor_cmd()[motor_idx].kp() = kps[i];
-            low_cmd.motor_cmd()[motor_idx].kd() = kds[i];
-            low_cmd.motor_cmd()[motor_idx].tau() = 0.0f;
-        }
-    }
+    } // 【修改结束】：大括号结束，锁在这里自动释放！
+    // 发送线程现在可以自由获取锁并发送数据了
     
     // 指令由后台线程发送
     usleep(static_cast<useconds_t>(control_dt * 1000000));
@@ -603,6 +619,9 @@ void Controller::low_state_message_handler(const void *message)
  */
 void Controller::low_cmd_write_handler()
 {
+    // 加锁：在计算 CRC 和发送期间，禁止其他线程修改 low_cmd
+    std::lock_guard<std::mutex> lock(cmd_mutex);
+
     low_cmd.crc() = crc32_core((uint32_t*)(&low_cmd), (sizeof(unitree_go::msg::dds_::LowCmd_) >> 2) - 1);
     lowcmd_publisher->Write(low_cmd);
 }

@@ -2,6 +2,7 @@
  * @file Controller.h
  * @brief GO2W 机器人 RL 部署控制器 (DreamWaQ)
  */
+#include <mutex>
 
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
@@ -152,6 +153,9 @@ private:
     torch::jit::script::Module latent_var; ///< 隐变量方差网络
     torch::jit::script::Module vel_mu;     ///< 速度估计均值网络
     torch::jit::script::Module vel_var;    ///< 速度估计方差网络
+
+    // 新增互斥锁，保护 low_cmd
+    std::mutex cmd_mutex;
 };
 
 #endif

@@ -112,6 +112,11 @@ Controller::Controller(const std::string &net_interface)
 // Matching Python init_cmd_go EXACTLY
 void Controller::init_cmd_go()
 {
+    std::lock_guard<std::mutex> lock(cmd_mutex); // 加锁（虽然此时线程可能未启动，但为了安全建议加上）
+    
+    // 建议增加：清零整个结构体，防止内存垃圾影响 CRC
+    std::memset(&low_cmd, 0, sizeof(low_cmd));
+
     low_cmd.head()[0] = 0xFE;
     low_cmd.head()[1] = 0xEF;
     low_cmd.level_flag() = 0xFF;
@@ -184,6 +189,8 @@ torch::Tensor Controller::reparameterise(torch::Tensor mean, torch::Tensor logva
 // Matching Python create_zero_cmd - does NOT modify mode
 void Controller::create_zero_cmd()
 {
+    std::lock_guard<std::mutex> lock(cmd_mutex); // 加锁
+
     for (int i = 0; i < 20; i++)
     {
         low_cmd.motor_cmd()[i].q() = 0;
@@ -197,6 +204,8 @@ void Controller::create_zero_cmd()
 // Matching Python create_damping_cmd - does NOT modify mode
 void Controller::create_damping_cmd()
 {
+    std::lock_guard<std::mutex> lock(cmd_mutex); // 加锁
+
     for (int i = 0; i < 20; i++)
     {
         low_cmd.motor_cmd()[i].q() = 0;
@@ -448,35 +457,40 @@ void Controller::run()
     std::array<float, 12> target_positions;
     std::array<float, 12> actual_positions;
     
-    // Send motor commands (matching Python exactly)
-    for (int i = 0; i < 16; i++)
     {
-        int motor_idx = joint2motor_idx[i];
+        std::lock_guard<std::mutex> lock(cmd_mutex); // 加锁：只保护数据写入
         
-        if (i >= 12)
+        // Send motor commands (matching Python exactly)
+        for (int i = 0; i < 16; i++)
         {
-            // Wheel: velocity control (matching Python)
-            low_cmd.motor_cmd()[motor_idx].q() = 0.0f;
-            low_cmd.motor_cmd()[motor_idx].dq() = action[i] * 10.0f;
-            low_cmd.motor_cmd()[motor_idx].kp() = 0.0f;
-            low_cmd.motor_cmd()[motor_idx].kd() = kds[i];
-            low_cmd.motor_cmd()[motor_idx].tau() = 0.0f;
-        }
-        else
-        {
-            // Leg: position control (matching Python)
-            float target_pos = default_real_angles[i] + action[i] * action_scale;
-            low_cmd.motor_cmd()[motor_idx].q() = target_pos;
-            low_cmd.motor_cmd()[motor_idx].dq() = 0.0f;
-            low_cmd.motor_cmd()[motor_idx].kp() = kps[i];
-            low_cmd.motor_cmd()[motor_idx].kd() = kds[i];
-            low_cmd.motor_cmd()[motor_idx].tau() = 0.0f;
-            
-            // 记录控制质量数据
-            target_positions[i] = target_pos;
-            actual_positions[i] = qj[i];
+            int motor_idx = joint2motor_idx[i];
+
+            if (i >= 12)
+            {
+                // Wheel: velocity control (matching Python)
+                low_cmd.motor_cmd()[motor_idx].q() = 0.0f;
+                low_cmd.motor_cmd()[motor_idx].dq() = action[i] * 10.0f;
+                low_cmd.motor_cmd()[motor_idx].kp() = 0.0f;
+                low_cmd.motor_cmd()[motor_idx].kd() = kds[i];
+                low_cmd.motor_cmd()[motor_idx].tau() = 0.0f;
+            }
+            else
+            {
+                // Leg: position control (matching Python)
+                float target_pos = default_real_angles[i] + action[i] * action_scale;
+                low_cmd.motor_cmd()[motor_idx].q() = target_pos;
+                low_cmd.motor_cmd()[motor_idx].dq() = 0.0f;
+                low_cmd.motor_cmd()[motor_idx].kp() = kps[i];
+                low_cmd.motor_cmd()[motor_idx].kd() = kds[i];
+                low_cmd.motor_cmd()[motor_idx].tau() = 0.0f;
+
+                // 记录控制质量数据
+                target_positions[i] = target_pos;
+                actual_positions[i] = qj[i];
+            }
         }
     }
+    
     
     // 记录控制质量（匹配 Python）
     g_monitor.recordControlQuality(target_positions.data(), actual_positions.data(), 12);

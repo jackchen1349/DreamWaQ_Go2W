@@ -15,7 +15,7 @@
 conda create -n deploy python=3.8 -y
 conda activate deploy
 
-# 2. 安装 PyTorch (Jetson ARM64 版),版本自定
+# 2. 安装 PyTorch (Jetson ARM64 版),Jetson上自带有
 pip install torch-2.1.0-cp38-cp38-linux_aarch64.whl
 
 # 3. 安装 Python 依赖
@@ -67,8 +67,11 @@ cmake .. && make -j$(nproc)
 sudo make install
 
 # 4. 下载 LibTorch (ARM64 版)
-wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.1.0%2Bcpu.zip
+wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip
 unzip libtorch-*.zip -d DreamWaQ_Go2W/deploy/deploy_real/cpp_go2w/
+#Jetson上自带有Pytorch，含有C++库，也许Cmake需要升级
+python3 -c "import torch; print(torch.utils.cmake_prefix_path)"
+set(CMAKE_PREFIX_PATH "......")
 
 # 5. 编译项目
 cd DreamWaQ_Go2W/deploy/deploy_real/cpp_go2w

@@ -2,11 +2,7 @@ import numpy as np
 import os
 from datetime import datetime
 import sys
-<<<<<<< HEAD
-sys.path.append("/root/DreamWaQ_Go2W/legged_gym")
-=======
 sys.path.append("/home/csq/DreamWaQ/legged_gym")
->>>>>>> temp-local-changes
 import isaacgym  
 from legged_gym.envs import *
 from legged_gym.utils import get_args, task_registry

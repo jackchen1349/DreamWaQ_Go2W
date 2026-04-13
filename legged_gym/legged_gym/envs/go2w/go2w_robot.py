@@ -28,13 +28,9 @@ class Go2w(LeggedRobot):
         """
         
         self.obs_hist_buf = self.obs_hist_buf[:,73:]
-<<<<<<< HEAD
         self.obs_buf_without_command = self.obs_buf.clone()
         self.obs_buf_without_command[:, 6:9] = 0
         self.obs_hist_buf = torch.cat((self.obs_hist_buf,self.obs_buf_without_command),dim = -1)
-=======
-        self.obs_hist_buf = torch.cat((self.obs_hist_buf,self.obs_buf),dim = -1)
->>>>>>> temp-local-changes
         self.prev_privileged_obs_buf = self.privileged_obs_buf
 
 
@@ -782,14 +778,11 @@ class Go2w(LeggedRobot):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
             print("termination_contact_names[i]",termination_contact_names[i],"indice[i]:",self.termination_contact_indices[i])
         
-<<<<<<< HEAD
         hip_names = ["FR_hip_joint", "FL_hip_joint", "RR_hip_joint", "RL_hip_joint"]
         self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i, name in enumerate(hip_names):
             self.hip_indices[i] = self.dof_names.index(name)
 
-=======
->>>>>>> temp-local-changes
         self.wheel_indices = torch.zeros(len(wheel_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(wheel_names)):
             self.wheel_indices[i] = self.gym.find_actor_dof_handle(self.envs[0], self.actor_handles[0], wheel_names[i])
@@ -937,7 +930,6 @@ class Go2w(LeggedRobot):
         return torch.sum(torch.square(self.dof_vel), dim=1)
     
     def _reward_dof_acc(self):
-<<<<<<< HEAD
         # 计算所有电机的加速度
         dof_acc = (self.last_dof_vel - self.dof_vel) / self.dt
         # 创建mask排除轮子电机
@@ -951,10 +943,6 @@ class Go2w(LeggedRobot):
         wheel_acc = (self.last_dof_vel[:, self.wheel_indices] - self.dof_vel[:, self.wheel_indices]) / self.dt
         # 对轮子电机求和
         return torch.sum(torch.square(wheel_acc), dim=1)
-=======
-        # Penalize dof accelerations
-        return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1)
->>>>>>> temp-local-changes
     
     def _reward_action_rate(self):
         # Penalize changes in actions
@@ -1032,7 +1020,6 @@ class Go2w(LeggedRobot):
         #self.episode_metric_sums['leg_action_l2'] += action_l2
         return action_l2
     
-<<<<<<< HEAD
     def _reward_hip_pos(self):
         return torch.sum(torch.square(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1)
 
@@ -1042,9 +1029,3 @@ class Go2w(LeggedRobot):
         dof_error_vec[:, self.wheel_indices] = 0  # 轮子误差不惩罚
         dof_error = torch.sum(torch.square(dof_error_vec), dim=1)
         return dof_error 
-=======
-    def _reward_hip_default(self):
-        hip_err = torch.sum((self.dof_pos[:, [0, 4, 8, 12]] - self.default_dof_pos[:, [0, 4, 8, 12]]) ** 2, dim = 1)
-        # print("penalty",penalty.shape)
-        return hip_err
->>>>>>> temp-local-changes

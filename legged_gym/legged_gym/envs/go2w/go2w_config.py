@@ -43,21 +43,13 @@ class GO2WRoughCfg( LeggedRobotCfg ):
         num_rows= 10 # number of terrain rows (levels)
         num_cols = 20 # number of terrain cols (types)
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
-<<<<<<< HEAD
         terrain_proportions = [0.2, 0.2, 0.2, 0.2, 0.2]
-=======
-        terrain_proportions = [0.2, 0.1, 0.25, 0.25, 0.2]
->>>>>>> temp-local-changes
         # trimesh only:
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
 
     # 机器人初始状态
     class init_state( LeggedRobotCfg.init_state ):
-<<<<<<< HEAD
-        pos = [0.0, 0.0, 0.42] # x,y,z [m] 初始位置 四元数表示
-=======
         pos = [0.0, 0.0, 0.4] # x,y,z [m] 初始位置 四元数表示
->>>>>>> temp-local-changes
         # 初始关节位置
         default_joint_angles = { # = target angles [rad] when action = 0.0
             'FL_hip_joint': 0.0,   # [rad]
@@ -145,19 +137,6 @@ class GO2WRoughCfg( LeggedRobotCfg ):
             termination = -0.8 # 25/8/23 zsy说不用加
             tracking_lin_vel = 1.5 # 惩罚当前机器人在X、Y方向速度与命令不一致
             tracking_ang_vel = 0.75 # 惩罚当前机器人在角度转向速度与命令不一致
-<<<<<<< HEAD
-            lin_vel_z = -1.0 # 惩罚机器人在Z轴上的速度 对应现象为机器人上下起伏很大
-            ang_vel_xy = -0.05 # 惩罚机器人在X轴和Y轴上的角速度 对应现象为遏制机器人左右晃动和前后晃动
-            torques = -0.00001 # 机器人运控各电机输出的力矩的平方和 让模型找到最省力矩的方案
-            dof_acc = -2.5e-7
-            wheel_acc = -2.5e-9
-            collision = -10.0
-            feet_stumble = -1.0
-            action_rate = -0.01
-            stand_still = -0.1
-            hip_pos = -0.5 # 惩罚髋关节不在默认位置
-            dof_error = -0.1 
-=======
             lin_vel_z = -1 # 惩罚机器人在Z轴上的速度 对应现象为机器人上下起伏很大
             ang_vel_xy = -0.05 # 惩罚机器人在X轴和Y轴上的角速度 对应现象为遏制机器人左右晃动和前后晃动
             orientation = -0.5 # 强烈鼓励机器人与初始姿态的基座方向一致
@@ -173,7 +152,6 @@ class GO2WRoughCfg( LeggedRobotCfg ):
             dof_pos_limits = -0
             hip_action_l2 = -0
             hip_default = -0.5 # 惩罚髋关节不在默认位置
->>>>>>> temp-local-changes
 
 class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
@@ -183,13 +161,8 @@ class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'rough_go2w'
         num_steps_per_env = 24 # per iteration
-<<<<<<< HEAD
-        max_iterations = 50000
-        load_run = "/root/DreamWaQ_Go2W/legged_gym/logs/rough_go2w/Jan15_13-13-31_/"
-=======
         max_iterations = 30000
         load_run = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Sep05_20-33-08_"
->>>>>>> temp-local-changes
         checkpoint = -1
         resume = False
         resume_path = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Aug23_13-57-15_/model_10000.pt"

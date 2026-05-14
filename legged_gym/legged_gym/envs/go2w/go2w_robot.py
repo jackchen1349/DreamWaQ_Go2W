@@ -1020,7 +1020,7 @@ class Go2w(LeggedRobot):
         #self.episode_metric_sums['leg_action_l2'] += action_l2
         return action_l2
     
-    def _reward_hip_pos(self):
+    def _reward_hip_default(self):
         return torch.sum(torch.square(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1)
 
     def _reward_dof_error(self):

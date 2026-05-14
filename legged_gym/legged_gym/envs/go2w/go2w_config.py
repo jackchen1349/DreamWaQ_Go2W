@@ -161,9 +161,9 @@ class GO2WRoughCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'rough_go2w'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 30000
-        load_run = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Sep05_20-33-08_"
+        max_iterations = 3000
+        load_run = "/mnt/nvme/jackchen/DreamWaQ_Go2W/legged_gym/logs/rough_go2w/Apr14_09-41-58_/"
         checkpoint = -1
         resume = False
-        resume_path = "/home/csq/DreamWaQ/legged_gym/logs/rough_go2w/Aug23_13-57-15_/model_10000.pt"
+        resume_path = "/mnt/nvme/jackchen/DreamWaQ_Go2W/legged_gym/logs/rough_go2w/Apr14_09-41-58_/model_900.pt"
   

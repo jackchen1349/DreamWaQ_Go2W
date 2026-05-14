@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch.distributions import Normal
 
 from .estimator import VAE
+from ..model.vae import AutoMldVae
 
 class ActorCritic_DWAQ(nn.Module):
     def __init__(
@@ -70,12 +71,30 @@ class ActorCritic_DWAQ(nn.Module):
         # 论文中的VAE架构，封装之后保存原本实现 csq 25/9/4   
 
         # VAE with constrained reparameterization
-        self.vae = VAE(
-            num_obs = num_env_obs,
+        # self.vae = VAE(
+        #     num_obs = num_env_obs,
+        #     num_history = num_history,
+        #     num_latent = num_latent,
+        #     activation = activation,
+        #     decoder_hidden_dims = [64, 128],
+        #     sigma_min = vae_sigma_min,
+        #     sigma_max = vae_sigma_max
+        # )
+
+        self.vae = AutoMldVae(
+            nfeats = num_env_obs,
             num_history = num_history,
             num_latent = num_latent,
-            activation = activation,
-            decoder_hidden_dims = [64, 128],
+            vel_dim = 3,
+            h_dim = 64,
+            ff_size = 128,
+            num_layers = 3,
+            num_heads = 2,
+            dropout = 0.1,
+            arch = "all_encoder",
+            normalize_before = False,
+            activation = "gelu",
+            position_embedding = "learned",
             sigma_min = vae_sigma_min,
             sigma_max = vae_sigma_max
         )

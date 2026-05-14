@@ -9,9 +9,9 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.distributions.distribution import Distribution
 
-from mld.models.architectures.tools.embeddings import TimestepEmbedding, Timesteps
-from mld.models.operator import PositionalEncoding
-from mld.models.operator.cross_attention import (
+from ..mld.models.architectures.tools.embeddings import TimestepEmbedding, Timesteps
+from ..mld.models.operator import PositionalEncoding
+from ..mld.models.operator.cross_attention import (
     SkipTransformerEncoder,
     SkipTransformerDecoder,
     TransformerDecoder,
@@ -19,8 +19,8 @@ from mld.models.operator.cross_attention import (
     TransformerEncoder,
     TransformerEncoderLayer,
 )
-from mld.models.operator.position_encoding import build_position_encoding
-from mld.utils.temos_utils import lengths_to_mask
+from ..mld.models.operator.position_encoding import build_position_encoding
+from ..mld.utils.temos_utils import lengths_to_mask
 
 
 class AutoMldVae(nn.Module):
@@ -98,21 +98,25 @@ class AutoMldVae(nn.Module):
             raise ValueError("Not support architecture!")
 
         # 将隐变量 z 投影回 Transformer 维度
-        self.decoder_latent_proj = nn.Linear(self.num_latent, self.h_dim)
+        self.decoder_latent_proj = nn.Linear(self.total_latent_size, self.h_dim)
 
         # 可学习的全局标记：数量为 total_latent_size * 2 (mu 和 logvar 各一半)
         self.global_motion_token = nn.Parameter(
             torch.randn(self.total_latent_size * 2, self.h_dim))
 
         # 输入嵌入
-        self.skel_embedding = nn.Linear(self.nfeats, self.h_dim)
+        self.skel_embedding = nn.Linear(self.nfeats * self.num_history, self.h_dim)
         # 输出层：预测下一帧观测
         self.final_layer = nn.Linear(self.h_dim, self.nfeats)
 
         # 用于速度预测的额外线性头（也可复用 encoder_latent_proj 的切割，此处独立实现更清晰）
         # 实际上我们已经将速度参数包含在 global token 的输出中，无需额外头
+        self.latent_mu_head = nn.Linear(self.h_dim, self.num_latent)
+        self.latent_var_head = nn.Linear(self.h_dim, self.num_latent)
+        self.vel_mu_head = nn.Linear(self.h_dim, self.vel_dim)
+        self.vel_var_head = nn.Linear(self.h_dim, self.vel_dim)
 
-    def encode(self, history_motion: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+    def encode(self, history_motion):
         """
         输入: history_motion [B, H, D]  历史观测序列
         返回: (latent_mu, latent_var, vel_mu, vel_var)
@@ -124,6 +128,7 @@ class AutoMldVae(nn.Module):
 
         # 仅使用历史序列，无未来信息
         x = self.skel_embedding(history_motion)          # [B, H, h_dim]
+        x.unsqueeze_(1)
         x = x.permute(1, 0, 2)                           # [H, B, h_dim]
 
         # 复制全局标记到当前批次
@@ -167,12 +172,6 @@ class AutoMldVae(nn.Module):
         global_feat = dist_encoded.mean(dim=0)  # [B, h_dim]
 
         # 然后分别投影得到 latent 和 velocity 的分布参数
-        # 这里添加四个线性层（如果之前未定义）
-        if not hasattr(self, 'latent_mu_head'):
-            self.latent_mu_head = nn.Linear(self.h_dim, self.num_latent)
-            self.latent_var_head = nn.Linear(self.h_dim, self.num_latent)
-            self.vel_mu_head = nn.Linear(self.h_dim, self.vel_dim)
-            self.vel_var_head = nn.Linear(self.h_dim, self.vel_dim)
 
         latent_mu = self.latent_mu_head(global_feat)
         latent_logvar = self.latent_var_head(global_feat)
@@ -183,7 +182,7 @@ class AutoMldVae(nn.Module):
         latent_logvar = self._constrain_logvar(latent_logvar)
         vel_logvar = self._constrain_logvar(vel_logvar)
 
-        return latent_mu, latent_logvar, vel_mu, vel_logvar
+        return [latent_mu, latent_logvar, vel_mu, vel_logvar]
 
     def _constrain_logvar(self, logvar: Tensor) -> Tensor:
         """将 logvar 约束到对应 sigma_min/max 范围内"""
@@ -219,6 +218,7 @@ class AutoMldVae(nn.Module):
 
         # 历史嵌入
         hist_emb = self.skel_embedding(history_motion)  # [B, H, h_dim]
+        hist_emb.unsqueeze_(1)
         hist_emb = hist_emb.permute(1, 0, 2)           # [H, B, h_dim]
 
         # 可学习查询（仅一个查询用于预测下一帧）

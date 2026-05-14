@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import sys
+sys.path.append("/mnt/nvme/jackchen/DreamWaQ_Go2W/rsl_rl-1.0.2/rsl_rl")
 from mld.models.operator import AdaptiveInstanceNorm1d
 
 
